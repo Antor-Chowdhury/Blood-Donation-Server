@@ -28,26 +28,50 @@ async function run() {
 
     const database = client.db("Blood-Donation");
     const userCollections = database.collection("user");
+    const donationRequestsCollection = db.collection("donation-requests");
 
-    // collection for common user
+    // Create a new user
     app.post("/users", async (req, res) => {
-      const userInfo = req.body;
-      userInfo.role = "donor";
-      userInfo.status = "active";
-      userInfo.createdAt = new Date();
+      try {
+        const userInfo = req.body;
 
-      const result = await userCollections.insertOne(userInfo);
+        // checking if user exists or not
+        const existingUser = await userCollections.findOne({
+          email: userInfo.email,
+        });
+        if (existingUser) {
+          return res.status(400).send({ message: "User already exists" });
+        }
 
-      res.send(result);
+        // setting default value
+        userInfo.role = userInfo.role || "donor";
+        userInfo.status = userInfo.status || "active";
+        userInfo.createdAt = new Date();
+
+        const result = await userCollections.insertOne(userInfo);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error creating user:", error);
+        res.status(500).send({ message: "Failed to create user" });
+      }
     });
 
     // fetching role of the user
-    app.get("/users/role/:email", async (req, res) => {
-      const { email } = req.params;
+    app.get("/users/:email/role", async (req, res) => {
+      try {
+        const { email } = req.params;
+        const query = { email: email };
+        const user = await userCollections.findOne(query);
 
-      const query = { email: email };
-      const result = await userCollections.findOne(query);
-      res.send(result);
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send({ role: user.role, status: user.status });
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        res.status(500).send({ message: "Failed to fetch user role" });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
