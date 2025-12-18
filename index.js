@@ -27,11 +27,12 @@ async function run() {
     // Send a ping to confirm a successful connection
 
     const database = client.db("Blood-Donation");
-    const userCollections = database.collection("user");
-    const donationRequestsCollection = db.collection("donation-requests");
+    const userCollections = database.collection("users");
+    const donationRequestsCollection = database.collection("donation-requests");
 
     // Create a new user
     app.post("/users", async (req, res) => {
+      console.log("USER RECEIVED:", req.body);
       try {
         const userInfo = req.body;
 
@@ -71,6 +72,43 @@ async function run() {
       } catch (error) {
         console.error("Error fetching user role:", error);
         res.status(500).send({ message: "Failed to fetch user role" });
+      }
+    });
+
+    // GET all donors with filters
+    app.get("/donors", async (req, res) => {
+      try {
+        const { bloodGroup, district, upazila } = req.query;
+
+        const query = {
+          role: "donor",
+          status: "active",
+        };
+
+        if (bloodGroup) query.bloodGroup = bloodGroup;
+        if (district) query.district = district;
+        if (upazila) query.upazila = upazila;
+
+        const donors = await userCollections.find(query).toArray();
+        res.send(donors);
+      } catch (error) {
+        console.error("Error fetching donors:", error);
+        res.status(500).send({ message: "Failed to fetch donors" });
+      }
+    });
+
+    // creating a donation request
+    app.post("/donation-request", async (req, res) => {
+      try {
+        const requestInfo = req.body;
+        requestInfo.status = requestInfo.status || "pending";
+        requestInfo.createdAt = new Date();
+
+        const result = await donationRequestsCollection.insertOne(requestInfo);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error creating donation request:", error);
+        res.status(500).send({ message: "Failed to create donation request" });
       }
     });
 
