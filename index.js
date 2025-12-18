@@ -97,19 +97,24 @@ async function run() {
       }
     });
 
-    // creating a donation request
-    app.post("/donation-request", async (req, res) => {
-      try {
-        const requestInfo = req.body;
-        requestInfo.status = requestInfo.status || "pending";
-        requestInfo.createdAt = new Date();
+    // donation req
+    app.post("/donation-requests", async (req, res) => {
+      const requestInfo = req.body;
+      requestInfo.status = requestInfo.status || "pending";
+      requestInfo.createdAt = new Date();
+      const result = await donationRequestsCollection.insertOne(requestInfo);
+      res.status(201).send(result);
+    });
 
-        const result = await donationRequestsCollection.insertOne(requestInfo);
-        res.status(201).send(result);
-      } catch (error) {
-        console.error("Error creating donation request:", error);
-        res.status(500).send({ message: "Failed to create donation request" });
-      }
+    // get donation req
+    app.get("/donation-requests", async (req, res) => {
+      const email = req.query.email;
+      console.log("Fetching donation requests for:", email);
+      const requests = await donationRequestsCollection
+        .find({ requesterEmail: email })
+        .toArray();
+      console.log("Found requests:", requests);
+      res.send(requests);
     });
 
     await client.db("admin").command({ ping: 1 });
